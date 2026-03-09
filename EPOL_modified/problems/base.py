@@ -6,7 +6,7 @@ from typing import List
 
 import numpy as np
 
-from common.solution import position
+from EPOL_modified.common.solution import position
 
 
 class BaseSubsetProblem(ABC):

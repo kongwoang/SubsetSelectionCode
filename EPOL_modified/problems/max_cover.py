@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from problems.base import BaseSubsetProblem
+from EPOL_modified.problems.base import BaseSubsetProblem
 
 
 class MaxCoverProblem(BaseSubsetProblem):

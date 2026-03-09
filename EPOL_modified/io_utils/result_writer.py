@@ -5,8 +5,8 @@ from typing import Optional
 
 import numpy as np
 
-from common.solution import position
-from common.types import AlgorithmResult
+from EPOL_modified.common.solution import position
+from EPOL_modified.common.types import AlgorithmResult
 
 
 class ResultWriter:
@@ -49,13 +49,21 @@ class ResultWriter:
             handle.write("\n")
 
 
-def build_result_dir_for_im(adjacency_file: str, algo: str, budget: float, epsilon: float, prob: float) -> str:
-    if algo == "sto_EVO_SMC":
-        return f"Result_01/{adjacency_file}_{algo}_{epsilon}_{prob}_{budget}"
-    return f"Result_01/{adjacency_file}_{algo}_{budget}"
+def _normalize_float(value: float) -> str:
+    text = f"{value:.6f}".rstrip("0").rstrip(".")
+    return text.replace(".", "_") if text else "0"
 
 
-def build_result_dir_for_mc(adjacency_file: str, q: int, algo: str, budget: float, epsilon: float, prob: float) -> str:
-    if algo == "sto_EVO_SMC":
-        return f"Result-q={q}/{adjacency_file}_{algo}_{epsilon}_{prob}_{budget}"
-    return f"Result-q={q}/{adjacency_file}_{algo}_{budget}"
+def build_result_dir(
+    result_root: str | Path,
+    problem_name: str,
+    dataset_file: str,
+    algorithm_name: str,
+    budget: float,
+    q: int | None = None,
+) -> str:
+    dataset_name = Path(dataset_file).stem
+    path = Path(result_root) / problem_name / dataset_name / algorithm_name / f"budget_{_normalize_float(budget)}"
+    if q is not None:
+        path = path / f"q_{q}"
+    return str(path)

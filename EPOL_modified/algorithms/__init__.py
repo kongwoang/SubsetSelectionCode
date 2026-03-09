@@ -2,39 +2,77 @@ from __future__ import annotations
 
 from typing import Callable, Dict
 
-from algorithms.eamc import run_eamc
-from algorithms.epomc import run_epomc
-from algorithms.fpomc import run_fpomc
-from algorithms.gga import run_gga
-from algorithms.greedy_max import run_greedy_max
-from algorithms.one_guess_greedy_plus import run_one_guess_greedy_plus
-from algorithms.p_pomc import run_p_pomc
-from algorithms.pomc import run_pomc
-from algorithms.sto_evo_smc import run_sto_evo_smc
+from EPOL_modified.algorithms.eamc import run_eamc
+from EPOL_modified.algorithms.epomc import run_epomc
+from EPOL_modified.algorithms.fpomc import run_fpomc
+from EPOL_modified.algorithms.gga import run_gga
+from EPOL_modified.algorithms.greedy_max import run_greedy_max
+from EPOL_modified.algorithms.one_guess_greedy_plus import run_one_guess_greedy_plus
+from EPOL_modified.algorithms.p_pomc import run_p_pomc
+from EPOL_modified.algorithms.pomc import run_pomc
+from EPOL_modified.algorithms.sto_evo_smc import run_sto_evo_smc
 
 ALGORITHM_REGISTRY: Dict[str, Callable] = {
-    "GGA": run_gga,
+    "gga": run_gga,
     "greedy_max": run_greedy_max,
     "one_guess_greedy_plus": run_one_guess_greedy_plus,
-    "POMC": run_pomc,
-    "EAMC": run_eamc,
-    "FPOMC": run_fpomc,
-    "EVO_SMC": run_sto_evo_smc,
-    "sto_EVO_SMC": run_sto_evo_smc,
-    "EPOMC": run_epomc,
-    "PPOMC": run_p_pomc,
+    "pomc": run_pomc,
+    "eamc": run_eamc,
+    "fpomc": run_fpomc,
+    "sto_evo_smc": run_sto_evo_smc,
+    "epomc": run_epomc,
+    "p_pomc": run_p_pomc,
+}
+
+ALGORITHM_ALIASES: Dict[str, str] = {
+    "gga": "gga",
+    "greedy_max": "greedy_max",
+    "one_guess_greedy_plus": "one_guess_greedy_plus",
+    "pomc": "pomc",
+    "eamc": "eamc",
+    "fpomc": "fpomc",
+    "sto_evo_smc": "sto_evo_smc",
+    "evo_smc": "sto_evo_smc",
+    "epomc": "epomc",
+    "p_pomc": "p_pomc",
+    "ppomc": "p_pomc",
+    "GGA": "gga",
+    "POMC": "pomc",
+    "EAMC": "eamc",
+    "FPOMC": "fpomc",
+    "EVO_SMC": "sto_evo_smc",
+    "sto_EVO_SMC": "sto_evo_smc",
+    "EPOMC": "epomc",
+    "PPOMC": "p_pomc",
 }
 
 
+def normalize_algorithm_name(name: str) -> str:
+    if name in ALGORITHM_ALIASES:
+        return ALGORITHM_ALIASES[name]
+
+    lowered = name.lower()
+    if lowered in ALGORITHM_ALIASES:
+        return ALGORITHM_ALIASES[lowered]
+
+    raise ValueError(f"Unsupported algorithm: {name}")
+
+
+def list_algorithms() -> list[str]:
+    return sorted(ALGORITHM_REGISTRY.keys())
+
+
 def get_algorithm_runner(name: str) -> Callable:
-    if name not in ALGORITHM_REGISTRY:
-        raise ValueError(f"Unsupported algorithm: {name}")
-    return ALGORITHM_REGISTRY[name]
+    canonical = normalize_algorithm_name(name)
+    return ALGORITHM_REGISTRY[canonical]
 
 
 __all__ = [
     "ALGORITHM_REGISTRY",
+    "ALGORITHM_ALIASES",
     "get_algorithm_runner",
+    "normalize_algorithm_name",
+    "list_algorithms",
     "run_gga",
     "run_greedy_max",
     "run_one_guess_greedy_plus",

@@ -7,9 +7,9 @@ from random import randint
 import numpy as np
 from tqdm import tqdm
 
-from common.random_ops import mutation
-from common.timing import elapsed_time, start_timing
-from common.types import AlgorithmConfig, AlgorithmResult
+from EPOL_modified.common.random_ops import mutation
+from EPOL_modified.common.timing import elapsed_time, start_timing
+from EPOL_modified.common.types import AlgorithmConfig, AlgorithmResult
 
 
 @lru_cache(maxsize=None)

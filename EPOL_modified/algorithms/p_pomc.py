@@ -4,9 +4,9 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
 
-from algorithms.subroutines.sub_pomc import run_sub_pomc
-from common.timing import elapsed_time, start_timing
-from common.types import AlgorithmConfig, AlgorithmResult
+from EPOL_modified.algorithms.subroutines.sub_pomc import run_sub_pomc
+from EPOL_modified.common.timing import elapsed_time, start_timing
+from EPOL_modified.common.types import AlgorithmConfig, AlgorithmResult
 
 
 def _process_sub_p_pomc(problem, n: int, fixed_index: int, budget: float, greedy_eval: int, config_payload: dict):

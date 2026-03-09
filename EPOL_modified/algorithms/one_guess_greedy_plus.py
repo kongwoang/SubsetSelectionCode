@@ -4,10 +4,10 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
 
-from algorithms.subroutines.greedy_plus import greedy_plus
-from common.solution import solution_plus_single_item
-from common.timing import elapsed_time, start_timing
-from common.types import AlgorithmConfig, AlgorithmResult
+from EPOL_modified.algorithms.subroutines.greedy_plus import greedy_plus
+from EPOL_modified.common.solution import solution_plus_single_item
+from EPOL_modified.common.timing import elapsed_time, start_timing
+from EPOL_modified.common.types import AlgorithmConfig, AlgorithmResult
 
 
 def _process_item(j: int, problem, budget: float):

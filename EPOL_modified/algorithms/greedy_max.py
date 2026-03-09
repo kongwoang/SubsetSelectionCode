@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 
-from common.timing import elapsed_time, start_timing
-from common.types import AlgorithmConfig, AlgorithmResult
+from EPOL_modified.common.timing import elapsed_time, start_timing
+from EPOL_modified.common.types import AlgorithmConfig, AlgorithmResult
 
 
 def _best_s_add_item(ground_set, candidate_solution, problem, f_value):
