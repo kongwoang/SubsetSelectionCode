@@ -1,8 +1,0 @@
- value = 90.87 cpu_time_used =607.561 wall_time_used =608.02 cost = 94.82147466732886 budget = 100.0 population = 28
-53 
- value = 98.548 cpu_time_used =1488.739 wall_time_used =1489.906 cost = 86.12145310084439 budget = 100.0 population = 74
-31 194 
- value = 118.228 cpu_time_used =2178.396 wall_time_used =2180.016 cost = 92.0144557585 budget = 100.0 population = 143
-15 
- value = 118.228 cpu_time_used =2825.056 wall_time_used =2827.324 cost = 92.0144557585 budget = 100.0 population = 195
-15 

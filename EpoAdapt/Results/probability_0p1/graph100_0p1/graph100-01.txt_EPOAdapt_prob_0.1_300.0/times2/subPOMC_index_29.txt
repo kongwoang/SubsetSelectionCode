@@ -1,8 +1,0 @@
-value = 41.52730279324304 total_value = 75.14 cpu_time_used =808.817 wall_time_used =814.183 cost = 228.87125730122816 total_cost = 289.52422036811106 budget = 239.3470369331171 total_budget = 300.0 population = 8
-1 5 87 90 92 96 97 98 99 
-value = 41.72730279324304 total_value = 75.34 cpu_time_used =915.896 wall_time_used =921.804 cost = 187.4699988889074 total_cost = 248.12296195579032 budget = 239.3470369331171 total_budget = 300.0 population = 7
-1 5 
-value = 41.78730279324304 total_value = 75.4 cpu_time_used =1020.0 wall_time_used =1026.549 cost = 187.4699988889074 total_cost = 248.12296195579032 budget = 239.3470369331171 total_budget = 300.0 population = 7
-1 5 
-value = 42.24730279324304 total_value = 75.86 cpu_time_used =1126.179 wall_time_used =1133.619 cost = 187.4699988889074 total_cost = 248.12296195579032 budget = 239.3470369331171 total_budget = 300.0 population = 7
-1 5 
