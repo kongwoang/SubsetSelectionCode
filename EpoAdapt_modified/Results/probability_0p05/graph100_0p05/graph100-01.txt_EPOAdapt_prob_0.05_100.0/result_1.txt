@@ -1,0 +1,4 @@
+value = 28.84  single_item = 1  cpu_time_used = 38.029  wall_time_used = 98.163  cost = 94.9611691855674  budget = 100.0
+1 90 99 
+value = 29.46  single_item = 97  cpu_time_used = 38.037  wall_time_used = 158.705  cost = 98.4700654853804  budget = 100.0
+1 96 97 99 
