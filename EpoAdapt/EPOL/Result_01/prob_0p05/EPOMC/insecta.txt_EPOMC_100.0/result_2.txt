@@ -1,0 +1,12 @@
+value = 29.194 single_item = 143 cpu_time_used =13.275 wall_time_used =2974.102 cost = 99.34734260564942 budget = 100.0
+87 96 122 124 127 129 143 
+value = 30.148 single_item = 6 cpu_time_used =13.276 wall_time_used =3058.159 cost = 97.79488952173783 budget = 100.0
+6 87 97 122 129 
+value = 30.814 single_item = 14 cpu_time_used =13.281 wall_time_used =3191.312 cost = 98.30758940457982 budget = 100.0
+11 14 117 
+value = 32.828 single_item = 21 cpu_time_used =13.283 wall_time_used =3389.109 cost = 96.54485036529539 budget = 100.0
+21 112 
+value = 38.524 single_item = 4 cpu_time_used =13.285 wall_time_used =3708.505 cost = 89.22674273071968 budget = 100.0
+4 112 129 
+value = 41.206 single_item = 142 cpu_time_used =13.287 wall_time_used =3908.357 cost = 95.45464385214363 budget = 100.0
+87 120 142 
