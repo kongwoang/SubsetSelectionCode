@@ -59,7 +59,7 @@ IM_ALGO_GRID = {
     },
     "epoadapt": {
         "max_workers": [6],
-        "algo_params_mode": "one_at_a_time",
+        "algo_params_mode": "product",
         "algo_params": {
             "lambda_penalty": [0.5, 1.0, 2.0],
             "alpha": [2.0, 3.0, 4.0],
@@ -91,7 +91,7 @@ MC_ALGO_GRID = {
     },
     "epoadapt": {
         "max_workers": [6],
-        "algo_params_mode": "one_at_a_time",
+        "algo_params_mode": "product",
         "algo_params": {
             "lambda_penalty": [0.5, 1.0, 2.0],
             "alpha": [2.0, 3.0, 4.0],
