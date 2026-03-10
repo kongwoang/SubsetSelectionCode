@@ -216,12 +216,19 @@ def _build_fast_coverage_sets(problem) -> Tuple[Dict[int, Set[int]], int]:
     return cov_sets, len(universe)
 
 
-def _build_rr_sets(problem, theta: int) -> List[Set[int]]:
+def _build_rr_sets(problem, theta: int, enable_progress_bar: bool = False) -> List[Set[int]]:
     n = problem.n
     weight_matrix = _get_weight_matrix(problem)
     rr_sets: List[Set[int]] = []
 
-    for _ in range(theta):
+    iterator = tqdm(
+        range(theta),
+        desc="epoadapt_rr",
+        position=0,
+        leave=True,
+        disable=not enable_progress_bar,
+    )
+    for _ in iterator:
         root = np.random.randint(n)
         rr = {int(root)}
         queue = [int(root)]
@@ -238,6 +245,8 @@ def _build_rr_sets(problem, theta: int) -> List[Set[int]]:
 
         rr_sets.append(rr)
 
+    if hasattr(iterator, "close"):
+        iterator.close()
     return rr_sets
 
 
@@ -253,8 +262,14 @@ def _estimate_influence_rr(rr_sets: List[Set[int]], n: int) -> Dict[int, float]:
     return {i: (n / theta) * counts[i] for i in range(n)}
 
 
-def _get_f_scores_via_rr_sets(problem, budget: float, theta: int = 1000, max_candidates: int = 20) -> Dict[int, float]:
-    rr_sets = _build_rr_sets(problem, theta)
+def _get_f_scores_via_rr_sets(
+    problem,
+    budget: float,
+    theta: int = 1000,
+    max_candidates: int = 20,
+    enable_progress_bar: bool = False,
+) -> Dict[int, float]:
+    rr_sets = _build_rr_sets(problem, theta, enable_progress_bar=enable_progress_bar)
     all_scores = _estimate_influence_rr(rr_sets, problem.n)
 
     candidates = []
@@ -641,7 +656,13 @@ def run_epoadapt(problem, config: AlgorithmConfig) -> AlgorithmResult:
             c_min = 1.0
         k_max = max(1, min(n, int(budget // c_min)))
         theta = max(theta_min, _choose_theta(n, k_max, eps=theta_eps))
-        f_scores = _get_f_scores_via_rr_sets(problem, budget, theta=theta, max_candidates=rr_max_candidates)
+        f_scores = _get_f_scores_via_rr_sets(
+            problem,
+            budget,
+            theta=theta,
+            max_candidates=rr_max_candidates,
+            enable_progress_bar=config.enable_progress_bar,
+        )
     else:
         for i in range(n):
             singleton = _unit_vector(i, n)
