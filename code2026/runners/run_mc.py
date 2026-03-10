@@ -45,17 +45,30 @@ def _normalize_max_workers(value: object) -> int | None:
     return int(value)
 
 
-def _algo_param_dicts(raw: dict) -> list[dict]:
+def _algo_param_dicts(raw: dict, mode: str = "product") -> list[dict]:
     if not raw:
         return [{}]
-    keys = sorted(raw.keys())
-    value_lists = []
-    for key in keys:
+    normalized: dict[str, list] = {}
+    for key in sorted(raw.keys()):
         value = raw[key]
         if isinstance(value, (list, tuple)):
-            value_lists.append(list(value))
+            normalized[key] = list(value)
         else:
-            value_lists.append([value])
+            normalized[key] = [value]
+
+    if mode == "one_at_a_time":
+        base = {key: values[0] for key, values in normalized.items()}
+        combos = [dict(base)]
+        for key, values in normalized.items():
+            for value in values[1:]:
+                candidate = dict(base)
+                candidate[key] = value
+                combos.append(candidate)
+        return combos
+
+    # default: full Cartesian product
+    keys = sorted(normalized.keys())
+    value_lists = [normalized[key] for key in keys]
     return [dict(zip(keys, combo)) for combo in product(*value_lists)]
 
 
@@ -78,7 +91,10 @@ def _build_algo_grid(
         if cli_max_workers.strip()
         else [_normalize_max_workers(v) for v in merged.get("max_workers", [MC_DEFAULTS["max_workers"]])]
     )
-    algo_param_dicts = _algo_param_dicts(merged.get("algo_params", {}))
+    algo_param_dicts = _algo_param_dicts(
+        merged.get("algo_params", {}),
+        mode=str(merged.get("algo_params_mode", "product")),
+    )
 
     return [
         (int(iteration), float(prob), float(epsilon), _normalize_max_workers(worker), dict(algo_params))
