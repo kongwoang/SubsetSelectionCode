@@ -29,3 +29,4 @@ class AlgorithmConfig:
     max_workers: Optional[int] = None
     enable_progress_bar: bool = True
     checkpoint_patience: int = 10
+    algo_params: Dict[str, Any] = field(default_factory=dict)

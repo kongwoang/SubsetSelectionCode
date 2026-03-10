@@ -370,6 +370,9 @@ def _sub_pomc_gr(
     result_dir: Optional[str],
     trial_id: int,
     enable_progress_bar: bool,
+    top_k: int,
+    sub_patience: int,
+    mutation_params: Dict[str, float],
 ) -> AlgorithmResult:
     start_cpu, start_wall = start_timing()
     writer = ResultWriter(result_dir, trial_id) if result_dir else None
@@ -378,7 +381,6 @@ def _sub_pomc_gr(
     population = [zero]
     fitness = [(0.0, 0.0)]
 
-    top_k = 20
     singleton_scores = []
     for i in range(n):
         if i == fixed_index:
@@ -432,7 +434,6 @@ def _sub_pomc_gr(
     best_times = 0
     best_value = 0.0
     total_time = iterations * greedy_evaluate
-    sub_patience = 15
 
     pbar = tqdm(
         range(total_time),
@@ -483,14 +484,14 @@ def _sub_pomc_gr(
             iteration,
             total_time,
             diversity,
-            alpha=3.0,
-            beta=1.0,
-            burst_prob=0.05,
-            burst_mult=5.0,
-            max_rate=0.5,
+            alpha=float(mutation_params["alpha"]),
+            beta=float(mutation_params["beta"]),
+            burst_prob=float(mutation_params["burst_prob"]),
+            burst_mult=float(mutation_params["burst_mult"]),
+            max_rate=float(mutation_params["max_rate"]),
             costs=np.asarray(problem.cost, dtype=float),
             budget=float(budget),
-            kappa=0.5,
+            kappa=float(mutation_params["kappa"]),
         )
         offspring = _enforce_seed(offspring, fixed_index)
 
@@ -597,6 +598,9 @@ def _process_subpomc_gr(
         result_dir=config_payload.get("result_dir"),
         trial_id=config_payload["trial_id"],
         enable_progress_bar=config_payload.get("enable_progress_bar", False),
+        top_k=config_payload["top_k"],
+        sub_patience=config_payload["sub_patience"],
+        mutation_params=config_payload["mutation_params"],
     )
 
     solution = sub_result.solution.copy()
@@ -609,7 +613,21 @@ def run_epoadapt(problem, config: AlgorithmConfig) -> AlgorithmResult:
 
     n = problem.n
     budget = problem.budget
-    lambda_penalty = 1.0
+    algo_params = config.algo_params or {}
+    lambda_penalty = float(algo_params.get("lambda_penalty", 1.0))
+    theta_eps = float(algo_params.get("theta_eps", 0.5))
+    theta_min = int(algo_params.get("theta_min", 1000))
+    rr_max_candidates = int(algo_params.get("rr_max_candidates", 20))
+    top_k = int(algo_params.get("top_k", 20))
+    sub_patience = int(algo_params.get("sub_patience", 15))
+    mutation_params = {
+        "alpha": float(algo_params.get("alpha", 3.0)),
+        "beta": float(algo_params.get("beta", 1.0)),
+        "burst_prob": float(algo_params.get("burst_prob", 0.05)),
+        "burst_mult": float(algo_params.get("burst_mult", 5.0)),
+        "max_rate": float(algo_params.get("max_rate", 0.5)),
+        "kappa": float(algo_params.get("kappa", 0.5)),
+    }
 
     f_scores: Dict[int, float] = {}
     cov_sets: Dict[int, Set[int]] = {}
@@ -622,8 +640,8 @@ def run_epoadapt(problem, config: AlgorithmConfig) -> AlgorithmResult:
         if c_min <= 0:
             c_min = 1.0
         k_max = max(1, min(n, int(budget // c_min)))
-        theta = max(1000, _choose_theta(n, k_max, eps=0.5))
-        f_scores = _get_f_scores_via_rr_sets(problem, budget, theta=theta, max_candidates=20)
+        theta = max(theta_min, _choose_theta(n, k_max, eps=theta_eps))
+        f_scores = _get_f_scores_via_rr_sets(problem, budget, theta=theta, max_candidates=rr_max_candidates)
     else:
         for i in range(n):
             singleton = _unit_vector(i, n)
@@ -694,6 +712,9 @@ def run_epoadapt(problem, config: AlgorithmConfig) -> AlgorithmResult:
         "greedy_evaluate": config.greedy_evaluate,
         "result_dir": config.result_dir,
         "enable_progress_bar": False,
+        "top_k": top_k,
+        "sub_patience": sub_patience,
+        "mutation_params": mutation_params,
     }
 
     max_workers = _choose_max_procs(len(singleton_list), cap=config.max_workers)
