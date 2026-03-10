@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import time
 from itertools import product
 from pathlib import Path
 from typing import Callable, Sequence
@@ -120,6 +121,22 @@ def _run_im_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
 
     base_data_dir = args.data_dir if args.data_dir is not None else IM_DEFAULTS["data_dir"]
     base_result_root = args.result_root if args.result_root is not None else IM_DEFAULTS["result_root"]
+    planned = (
+        args.trials
+        * len(adjacency_files)
+        * len(outdegree_files)
+        * len(probabilities)
+        * len(budgets)
+        * len(iterations)
+        * len(algorithms)
+        * len(probs)
+        * len(epsilons)
+    )
+    print(
+        f"[IM] planned={planned} "
+        f"(trials={args.trials}, files={len(adjacency_files)}, outdegrees={len(outdegree_files)}, "
+        f"algorithms={len(algorithms)})"
+    )
     total = 0
     failed = 0
 
@@ -146,6 +163,12 @@ def _run_im_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
                 epsilon,
             ) = combo
             total += 1
+            started = time.perf_counter()
+            print(
+                f"[IM][{total}/{planned}] START "
+                f"trial={trial_id} algo={algorithm} adj={adjacency_file} out={outdegree_file} "
+                f"p={probability} budget={budget} iter={iteration} prob={prob} eps={epsilon}"
+            )
             run_args = argparse.Namespace(
                 data_dir=base_data_dir,
                 result_root=base_result_root,
@@ -179,12 +202,20 @@ def _run_im_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
                         "epsilon": epsilon,
                     },
                 )
+                elapsed = time.perf_counter() - started
+                print(f"[IM][{total}/{planned}] DRY_DONE elapsed={elapsed:.2f}s")
                 continue
             try:
                 run_im(run_args)
+                elapsed = time.perf_counter() - started
+                print(f"[IM][{total}/{planned}] OK elapsed={elapsed:.2f}s")
             except Exception as exc:  # noqa: BLE001
                 failed += 1
-                print(f"[ERROR][IM] trial={trial_id} algo={algorithm} file={adjacency_file}: {exc}")
+                elapsed = time.perf_counter() - started
+                print(
+                    f"[IM][{total}/{planned}] ERROR elapsed={elapsed:.2f}s "
+                    f"trial={trial_id} algo={algorithm} file={adjacency_file}: {exc}"
+                )
                 if args.stop_on_error:
                     raise
     return total, failed
@@ -201,6 +232,21 @@ def _run_mc_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
 
     base_data_dir = args.data_dir if args.data_dir is not None else MC_DEFAULTS["data_dir"]
     base_result_root = args.result_root if args.result_root is not None else MC_DEFAULTS["result_root"]
+    planned = (
+        args.trials
+        * len(adjacency_files)
+        * len(qs)
+        * len(ns)
+        * len(budgets)
+        * len(iterations)
+        * len(algorithms)
+        * len(probs)
+        * len(epsilons)
+    )
+    print(
+        f"[MC] planned={planned} "
+        f"(trials={args.trials}, files={len(adjacency_files)}, algorithms={len(algorithms)})"
+    )
     total = 0
     failed = 0
 
@@ -218,6 +264,12 @@ def _run_mc_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
         ):
             adjacency_file, q, n, budget, iteration, algorithm, prob, epsilon = combo
             total += 1
+            started = time.perf_counter()
+            print(
+                f"[MC][{total}/{planned}] START "
+                f"trial={trial_id} algo={algorithm} adj={adjacency_file} q={q} n={n} "
+                f"budget={budget} iter={iteration} prob={prob} eps={epsilon}"
+            )
             run_args = argparse.Namespace(
                 data_dir=base_data_dir,
                 result_root=base_result_root,
@@ -251,12 +303,20 @@ def _run_mc_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
                         "epsilon": epsilon,
                     },
                 )
+                elapsed = time.perf_counter() - started
+                print(f"[MC][{total}/{planned}] DRY_DONE elapsed={elapsed:.2f}s")
                 continue
             try:
                 run_mc(run_args)
+                elapsed = time.perf_counter() - started
+                print(f"[MC][{total}/{planned}] OK elapsed={elapsed:.2f}s")
             except Exception as exc:  # noqa: BLE001
                 failed += 1
-                print(f"[ERROR][MC] trial={trial_id} algo={algorithm} file={adjacency_file}: {exc}")
+                elapsed = time.perf_counter() - started
+                print(
+                    f"[MC][{total}/{planned}] ERROR elapsed={elapsed:.2f}s "
+                    f"trial={trial_id} algo={algorithm} file={adjacency_file}: {exc}"
+                )
                 if args.stop_on_error:
                     raise
     return total, failed
