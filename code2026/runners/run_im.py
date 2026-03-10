@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import product
 from pathlib import Path
 from typing import Sequence
@@ -229,6 +231,18 @@ def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.Argu
     parser.add_argument("--grid-search", action=argparse.BooleanOptionalAction, default=IM_DEFAULTS["grid_search"])
     parser.add_argument("--stop-on-error", action="store_true", default=IM_DEFAULTS["stop_on_error"])
     parser.add_argument(
+        "--grid-parallel-runs",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Run grid-search combinations in parallel at runner level",
+    )
+    parser.add_argument(
+        "--grid-parallel-workers",
+        type=int,
+        default=None,
+        help="Worker threads for grid-level parallelism (None -> auto)",
+    )
+    parser.add_argument(
         "--grid-iterations",
         type=str,
         default="",
@@ -315,41 +329,78 @@ def run_im(args: argparse.Namespace) -> AlgorithmResult:
     print(f"[IM-GRID] planned={total} algorithms={len(algorithms)}")
     best_result: AlgorithmResult | None = None
 
-    for idx, (iteration, prob, epsilon, workers, algo_params, algo) in enumerate(jobs, start=1):
-        trial_id = args.trial_id + idx - 1
-        started = time.perf_counter()
-        label = (
-            f"trial={trial_id} algo={algo} iter={iteration} prob={prob} eps={epsilon} "
-            f"workers={workers} algo_params={algo_params}"
+    def _execute_grid_job(index: int, job_tuple: tuple[int, float, float, int | None, dict, str]) -> AlgorithmResult:
+        iteration, prob, epsilon, workers, algo_params, algo = job_tuple
+        trial_id = args.trial_id + index - 1
+        return _run_im_single(
+            problem=problem,
+            result_root=result_root,
+            adjacency_file=adjacency_path.name,
+            outdegree_file=outdegree_path.name,
+            probability=args.probability,
+            budget=args.budget,
+            canonical_algo=algo,
+            iterations=iteration,
+            prob=prob,
+            epsilon=epsilon,
+            trial_id=trial_id,
+            max_workers=args.max_workers if args.max_workers is not None else workers,
+            disable_progress=args.disable_progress,
+            data_dir=data_dir,
+            algo_params=algo_params,
         )
-        print(f"[IM-GRID][{idx}/{total}] START {label}")
-        try:
-            result = _run_im_single(
-                problem=problem,
-                result_root=result_root,
-                adjacency_file=adjacency_path.name,
-                outdegree_file=outdegree_path.name,
-                probability=args.probability,
-                budget=args.budget,
-                canonical_algo=algo,
-                iterations=iteration,
-                prob=prob,
-                epsilon=epsilon,
-                trial_id=trial_id,
-                max_workers=args.max_workers if args.max_workers is not None else workers,
-                disable_progress=args.disable_progress,
-                data_dir=data_dir,
-                algo_params=algo_params,
+
+    if args.grid_parallel_runs and total > 1:
+        workers = args.grid_parallel_workers or max(1, min(total, os.cpu_count() or 1))
+        print(f"[IM-GRID] parallel=ON workers={workers}")
+        future_to_meta = {}
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            for idx, job in enumerate(jobs, start=1):
+                iteration, prob, epsilon, job_workers, algo_params, algo = job
+                trial_id = args.trial_id + idx - 1
+                label = (
+                    f"trial={trial_id} algo={algo} iter={iteration} prob={prob} eps={epsilon} "
+                    f"workers={job_workers} algo_params={algo_params}"
+                )
+                print(f"[IM-GRID][{idx}/{total}] SUBMIT {label}")
+                started = time.perf_counter()
+                future = executor.submit(_execute_grid_job, idx, job)
+                future_to_meta[future] = (idx, label, started)
+
+            for future in as_completed(future_to_meta):
+                idx, label, started = future_to_meta[future]
+                elapsed = time.perf_counter() - started
+                try:
+                    result = future.result()
+                    print(f"[IM-GRID][{idx}/{total}] OK elapsed={elapsed:.2f}s value={result.value} cost={result.cost}")
+                    if _is_better(result, best_result):
+                        best_result = result
+                except Exception as exc:  # noqa: BLE001
+                    print(f"[IM-GRID][{idx}/{total}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
+                    if args.stop_on_error:
+                        raise
+    else:
+        print("[IM-GRID] parallel=OFF")
+        for idx, job in enumerate(jobs, start=1):
+            iteration, prob, epsilon, workers, algo_params, algo = job
+            trial_id = args.trial_id + idx - 1
+            started = time.perf_counter()
+            label = (
+                f"trial={trial_id} algo={algo} iter={iteration} prob={prob} eps={epsilon} "
+                f"workers={workers} algo_params={algo_params}"
             )
-            elapsed = time.perf_counter() - started
-            print(f"[IM-GRID][{idx}/{total}] OK elapsed={elapsed:.2f}s value={result.value} cost={result.cost}")
-            if _is_better(result, best_result):
-                best_result = result
-        except Exception as exc:  # noqa: BLE001
-            elapsed = time.perf_counter() - started
-            print(f"[IM-GRID][{idx}/{total}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
-            if args.stop_on_error:
-                raise
+            print(f"[IM-GRID][{idx}/{total}] START {label}")
+            try:
+                result = _execute_grid_job(idx, job)
+                elapsed = time.perf_counter() - started
+                print(f"[IM-GRID][{idx}/{total}] OK elapsed={elapsed:.2f}s value={result.value} cost={result.cost}")
+                if _is_better(result, best_result):
+                    best_result = result
+            except Exception as exc:  # noqa: BLE001
+                elapsed = time.perf_counter() - started
+                print(f"[IM-GRID][{idx}/{total}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
+                if args.stop_on_error:
+                    raise
 
     if best_result is None:
         raise RuntimeError("All IM grid jobs failed")
