@@ -17,7 +17,7 @@ from .sto_evo_smc import run_sto_evo_smc
 ALGORITHM_REGISTRY: Dict[str, Callable] = {
     "gga": run_gga,
     "greedy_max": run_greedy_max,
-    "newalgo": run_newalgo,
+    # "newalgo": run_newalgo,
     "one_guess_greedy_plus": run_one_guess_greedy_plus,
     "pomc": run_pomc,
     "eamc": run_eamc,
