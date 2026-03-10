@@ -11,6 +11,7 @@ from ..io_utils.result_writer import ResultWriter, build_result_dir
 from ..problems.max_cover import MaxCoverProblem
 from .local_config import MC_DEFAULTS
 from .pathing import DEFAULT_DATA_DIR, DEFAULT_RESULTS_DIR, resolve_input_file
+from .summary import append_run_summary
 
 
 def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
@@ -59,6 +60,18 @@ def run_mc(args: argparse.Namespace) -> AlgorithmResult:
 
     canonical_algo = normalize_algorithm_name(args.algorithm)
     runner = get_algorithm_runner(canonical_algo)
+    summary_params = {
+        "algorithm": canonical_algo,
+        "adjacency_file": args.adjacency_file,
+        "q": args.q,
+        "n": args.n,
+        "budget": args.budget,
+        "iterations": args.iterations,
+        "prob": args.prob,
+        "epsilon": args.epsilon,
+        "data_dir": str(data_dir),
+        "result_root": str(result_root),
+    }
 
     data = read_mc_neighbors(str(adjacency_path), args.n)
     problem = MaxCoverProblem(data=data, budget=args.budget, n=args.n, q=args.q)
@@ -95,7 +108,28 @@ def run_mc(args: argparse.Namespace) -> AlgorithmResult:
         enable_progress_bar=not args.disable_progress,
     )
 
-    return runner(problem, config)
+    try:
+        result = runner(problem, config)
+    except Exception as exc:
+        append_run_summary(
+            result_root=result_root,
+            problem="mc",
+            status="error",
+            trial_id=args.trial_id,
+            params=summary_params,
+            error=str(exc),
+        )
+        raise
+
+    append_run_summary(
+        result_root=result_root,
+        problem="mc",
+        status="ok",
+        trial_id=args.trial_id,
+        params=summary_params,
+        result=result,
+    )
+    return result
 
 
 def main(argv: Sequence[str] | None = None) -> int:

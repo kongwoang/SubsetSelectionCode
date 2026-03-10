@@ -9,6 +9,7 @@ from ..algorithms import list_algorithms
 from .local_config import IM_DEFAULTS, MC_DEFAULTS
 from .run_im import run_im
 from .run_mc import run_mc
+from .summary import append_run_summary
 
 # Edit this block directly to define your grid-search defaults.
 GRID_CONFIG = {
@@ -117,7 +118,6 @@ def _run_im_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
 
     base_data_dir = args.data_dir if args.data_dir is not None else IM_DEFAULTS["data_dir"]
     base_result_root = args.result_root if args.result_root is not None else IM_DEFAULTS["result_root"]
-
     total = 0
     failed = 0
 
@@ -161,6 +161,22 @@ def _run_im_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
             )
             if args.dry_run:
                 print(f"[DRY][IM] trial={trial_id} algo={algorithm} budget={budget} p={probability} file={adjacency_file}")
+                append_run_summary(
+                    result_root=Path(base_result_root),
+                    problem="im",
+                    status="dry_run",
+                    trial_id=trial_id,
+                    params={
+                        "algorithm": algorithm,
+                        "adjacency_file": adjacency_file,
+                        "outdegree_file": outdegree_file,
+                        "probability": probability,
+                        "budget": budget,
+                        "iterations": iteration,
+                        "prob": prob,
+                        "epsilon": epsilon,
+                    },
+                )
                 continue
             try:
                 run_im(run_args)
@@ -183,7 +199,6 @@ def _run_mc_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
 
     base_data_dir = args.data_dir if args.data_dir is not None else MC_DEFAULTS["data_dir"]
     base_result_root = args.result_root if args.result_root is not None else MC_DEFAULTS["result_root"]
-
     total = 0
     failed = 0
 
@@ -218,6 +233,22 @@ def _run_mc_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
             )
             if args.dry_run:
                 print(f"[DRY][MC] trial={trial_id} algo={algorithm} budget={budget} q={q} n={n} file={adjacency_file}")
+                append_run_summary(
+                    result_root=Path(base_result_root),
+                    problem="mc",
+                    status="dry_run",
+                    trial_id=trial_id,
+                    params={
+                        "algorithm": algorithm,
+                        "adjacency_file": adjacency_file,
+                        "q": q,
+                        "n": n,
+                        "budget": budget,
+                        "iterations": iteration,
+                        "prob": prob,
+                        "epsilon": epsilon,
+                    },
+                )
                 continue
             try:
                 run_mc(run_args)
