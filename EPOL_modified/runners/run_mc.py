@@ -4,13 +4,13 @@ import argparse
 from pathlib import Path
 from typing import Sequence
 
-from EPOL_modified.algorithms import get_algorithm_runner, list_algorithms, normalize_algorithm_name
-from EPOL_modified.common.types import AlgorithmConfig, AlgorithmResult
-from EPOL_modified.io_utils.graph_readers import read_mc_neighbors
-from EPOL_modified.io_utils.result_writer import ResultWriter, build_result_dir
-from EPOL_modified.problems.max_cover import MaxCoverProblem
-from EPOL_modified.runners.local_config import MC_DEFAULTS
-from EPOL_modified.runners.pathing import DEFAULT_DATA_DIR, DEFAULT_RESULTS_DIR, resolve_input_file
+from ..algorithms import get_algorithm_runner, list_algorithms, normalize_algorithm_name
+from ..common.types import AlgorithmConfig, AlgorithmResult
+from ..io_utils.graph_readers import read_mc_neighbors
+from ..io_utils.result_writer import ResultWriter, build_result_dir
+from ..problems.max_cover import MaxCoverProblem
+from .local_config import MC_DEFAULTS
+from .pathing import DEFAULT_DATA_DIR, DEFAULT_RESULTS_DIR, resolve_input_file
 
 
 def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:

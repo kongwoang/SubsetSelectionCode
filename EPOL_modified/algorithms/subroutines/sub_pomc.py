@@ -6,10 +6,10 @@ import numpy as np
 from random import randint
 from tqdm import tqdm
 
-from EPOL_modified.common.random_ops import mutation
-from EPOL_modified.common.timing import elapsed_time, start_timing
-from EPOL_modified.common.types import AlgorithmConfig, AlgorithmResult
-from EPOL_modified.io_utils.result_writer import ResultWriter
+from ...common.random_ops import mutation
+from ...common.timing import elapsed_time, start_timing
+from ...common.types import AlgorithmConfig, AlgorithmResult
+from ...io_utils.result_writer import ResultWriter
 
 
 def run_sub_pomc(

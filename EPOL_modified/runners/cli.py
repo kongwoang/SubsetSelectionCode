@@ -4,10 +4,10 @@ import argparse
 import sys
 from typing import Sequence
 
-from EPOL_modified.runners.run_im import build_parser as build_im_parser
-from EPOL_modified.runners.run_im import run_im
-from EPOL_modified.runners.run_mc import build_parser as build_mc_parser
-from EPOL_modified.runners.run_mc import run_mc
+from .run_im import build_parser as build_im_parser
+from .run_im import run_im
+from .run_mc import build_parser as build_mc_parser
+from .run_mc import run_mc
 
 
 def build_parser() -> argparse.ArgumentParser:

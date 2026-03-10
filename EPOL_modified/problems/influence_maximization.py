@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from EPOL_modified.problems.base import BaseSubsetProblem
+from .base import BaseSubsetProblem
 
 
 class InfluenceMaximizationProblem(BaseSubsetProblem):

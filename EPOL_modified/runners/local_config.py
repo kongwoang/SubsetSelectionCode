@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from EPOL_modified.runners.pathing import DEFAULT_DATA_DIR, DEFAULT_RESULTS_DIR
+from .pathing import DEFAULT_DATA_DIR, DEFAULT_RESULTS_DIR
 
 
 IM_DEFAULTS = {

@@ -2,15 +2,15 @@ from __future__ import annotations
 
 from typing import Callable, Dict
 
-from EPOL_modified.algorithms.eamc import run_eamc
-from EPOL_modified.algorithms.epomc import run_epomc
-from EPOL_modified.algorithms.fpomc import run_fpomc
-from EPOL_modified.algorithms.gga import run_gga
-from EPOL_modified.algorithms.greedy_max import run_greedy_max
-from EPOL_modified.algorithms.one_guess_greedy_plus import run_one_guess_greedy_plus
-from EPOL_modified.algorithms.p_pomc import run_p_pomc
-from EPOL_modified.algorithms.pomc import run_pomc
-from EPOL_modified.algorithms.sto_evo_smc import run_sto_evo_smc
+from .eamc import run_eamc
+from .epomc import run_epomc
+from .fpomc import run_fpomc
+from .gga import run_gga
+from .greedy_max import run_greedy_max
+from .one_guess_greedy_plus import run_one_guess_greedy_plus
+from .p_pomc import run_p_pomc
+from .pomc import run_pomc
+from .sto_evo_smc import run_sto_evo_smc
 
 ALGORITHM_REGISTRY: Dict[str, Callable] = {
     "gga": run_gga,

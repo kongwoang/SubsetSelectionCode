@@ -6,10 +6,10 @@ from random import randint
 import numpy as np
 from tqdm import tqdm
 
-from EPOL_modified.common.random_ops import mutation
-from EPOL_modified.common.solution import position
-from EPOL_modified.common.timing import elapsed_time, start_timing
-from EPOL_modified.common.types import AlgorithmConfig, AlgorithmResult
+from ..common.random_ops import mutation
+from ..common.solution import position
+from ..common.timing import elapsed_time, start_timing
+from ..common.types import AlgorithmConfig, AlgorithmResult
 
 
 def _h(z, x_f: float, x_c: float) -> float:

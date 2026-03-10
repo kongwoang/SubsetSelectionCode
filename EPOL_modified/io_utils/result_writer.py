@@ -5,8 +5,8 @@ from typing import Optional
 
 import numpy as np
 
-from EPOL_modified.common.solution import position
-from EPOL_modified.common.types import AlgorithmResult
+from ..common.solution import position
+from ..common.types import AlgorithmResult
 
 
 class ResultWriter:

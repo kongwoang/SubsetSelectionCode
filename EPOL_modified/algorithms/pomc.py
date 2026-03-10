@@ -5,9 +5,9 @@ from random import randint
 import numpy as np
 from tqdm import tqdm
 
-from EPOL_modified.common.random_ops import mutation
-from EPOL_modified.common.timing import elapsed_time, start_timing
-from EPOL_modified.common.types import AlgorithmConfig, AlgorithmResult
+from ..common.random_ops import mutation
+from ..common.timing import elapsed_time, start_timing
+from ..common.types import AlgorithmConfig, AlgorithmResult
 
 
 def run_pomc(problem, config: AlgorithmConfig) -> AlgorithmResult:

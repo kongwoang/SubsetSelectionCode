@@ -1,6 +1,6 @@
-from EPOL_modified.problems.base import BaseSubsetProblem
-from EPOL_modified.problems.influence_maximization import InfluenceMaximizationProblem
-from EPOL_modified.problems.max_cover import MaxCoverProblem
+from .base import BaseSubsetProblem
+from .influence_maximization import InfluenceMaximizationProblem
+from .max_cover import MaxCoverProblem
 
 __all__ = [
     "BaseSubsetProblem",

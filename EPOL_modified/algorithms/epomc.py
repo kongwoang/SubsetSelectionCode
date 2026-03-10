@@ -4,10 +4,10 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
 
-from EPOL_modified.algorithms.subroutines.sub_pomc import run_sub_pomc
-from EPOL_modified.common.solution import solution_plus_single_item
-from EPOL_modified.common.timing import elapsed_time, start_timing
-from EPOL_modified.common.types import AlgorithmConfig, AlgorithmResult
+from .subroutines.sub_pomc import run_sub_pomc
+from ..common.solution import solution_plus_single_item
+from ..common.timing import elapsed_time, start_timing
+from ..common.types import AlgorithmConfig, AlgorithmResult
 
 
 def _process_subpomc(index: int, value: float, cost: float, problem, config_payload: dict):
