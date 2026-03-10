@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import os
 import time
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from itertools import product
 from pathlib import Path
 from typing import Callable, Sequence
@@ -19,6 +21,8 @@ GRID_CONFIG = {
     "trials": 1,
     "trial_start": 0,
     "max_workers": None,
+    "parallel_runs": True,  # run grid jobs in parallel at run_all level
+    "parallel_run_workers": None,  # None -> auto
     "disable_progress": False,
     "stop_on_error": False,
     "dry_run": False,
@@ -68,6 +72,18 @@ def _parse_algorithms(raw: str) -> list[str]:
     return [str(item) for item in _parse_csv(raw, str)]
 
 
+def _default_parallel_workers(num_jobs: int) -> int:
+    return max(1, min(num_jobs, os.cpu_count() or 1))
+
+
+def _execute_im_job(job_args: dict) -> None:
+    run_im(argparse.Namespace(**job_args))
+
+
+def _execute_mc_job(job_args: dict) -> None:
+    run_mc(argparse.Namespace(**job_args))
+
+
 def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
     if parser is None:
         parser = argparse.ArgumentParser(
@@ -85,6 +101,18 @@ def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.Argu
     parser.add_argument("--trials", type=int, default=int(GRID_CONFIG["trials"]), help="Number of trial_id repetitions")
     parser.add_argument("--trial-start", type=int, default=int(GRID_CONFIG["trial_start"]), help="Starting trial_id")
     parser.add_argument("--max-workers", type=int, default=GRID_CONFIG["max_workers"])
+    parser.add_argument(
+        "--parallel-runs",
+        action=argparse.BooleanOptionalAction,
+        default=bool(GRID_CONFIG["parallel_runs"]),
+        help="Enable parallel execution across run_all job combinations",
+    )
+    parser.add_argument(
+        "--parallel-run-workers",
+        type=int,
+        default=GRID_CONFIG["parallel_run_workers"],
+        help="Worker processes for run_all-level parallel mode",
+    )
     parser.add_argument("--disable-progress", action="store_true", default=bool(GRID_CONFIG["disable_progress"]))
     parser.add_argument("--stop-on-error", action="store_true", default=bool(GRID_CONFIG["stop_on_error"]))
     parser.add_argument("--dry-run", action="store_true", default=bool(GRID_CONFIG["dry_run"]))
@@ -137,7 +165,8 @@ def _run_im_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
         f"(trials={args.trials}, files={len(adjacency_files)}, outdegrees={len(outdegree_files)}, "
         f"algorithms={len(algorithms)})"
     )
-    total = 0
+    jobs: list[dict] = []
+    labels: list[str] = []
     failed = 0
 
     for trial_offset in range(args.trials):
@@ -162,62 +191,93 @@ def _run_im_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
                 prob,
                 epsilon,
             ) = combo
-            total += 1
-            started = time.perf_counter()
-            print(
-                f"[IM][{total}/{planned}] START "
+            labels.append(
                 f"trial={trial_id} algo={algorithm} adj={adjacency_file} out={outdegree_file} "
                 f"p={probability} budget={budget} iter={iteration} prob={prob} eps={epsilon}"
             )
-            run_args = argparse.Namespace(
-                data_dir=base_data_dir,
-                result_root=base_result_root,
-                adjacency_file=adjacency_file,
-                outdegree_file=outdegree_file,
-                probability=probability,
-                budget=budget,
-                iterations=iteration,
-                algorithm=algorithm,
-                prob=prob,
-                epsilon=epsilon,
-                trial_id=trial_id,
-                max_workers=args.max_workers,
-                disable_progress=args.disable_progress,
+            jobs.append(
+                {
+                    "data_dir": base_data_dir,
+                    "result_root": base_result_root,
+                    "adjacency_file": adjacency_file,
+                    "outdegree_file": outdegree_file,
+                    "probability": probability,
+                    "budget": budget,
+                    "iterations": iteration,
+                    "algorithm": algorithm,
+                    "prob": prob,
+                    "epsilon": epsilon,
+                    "trial_id": trial_id,
+                    "max_workers": args.max_workers,
+                    "disable_progress": args.disable_progress,
+                }
             )
-            if args.dry_run:
-                print(f"[DRY][IM] trial={trial_id} algo={algorithm} budget={budget} p={probability} file={adjacency_file}")
-                append_run_summary(
-                    result_root=Path(base_result_root),
-                    problem="im",
-                    status="dry_run",
-                    trial_id=trial_id,
-                    params={
-                        "algorithm": algorithm,
-                        "adjacency_file": adjacency_file,
-                        "outdegree_file": outdegree_file,
-                        "probability": probability,
-                        "budget": budget,
-                        "iterations": iteration,
-                        "prob": prob,
-                        "epsilon": epsilon,
-                    },
-                )
+
+    total = 0
+    if args.parallel_runs and not args.dry_run:
+        workers = args.parallel_run_workers if args.parallel_run_workers else _default_parallel_workers(planned)
+        print(f"[IM] parallel_runs=ON workers={workers}")
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            future_to_meta = {}
+            for idx, job in enumerate(jobs, start=1):
+                label = labels[idx - 1]
+                started = time.perf_counter()
+                print(f"[IM][{idx}/{planned}] SUBMIT {label}")
+                future = executor.submit(_execute_im_job, job)
+                future_to_meta[future] = (idx, label, started)
+
+            for future in as_completed(future_to_meta):
+                idx, label, started = future_to_meta[future]
+                total += 1
                 elapsed = time.perf_counter() - started
-                print(f"[IM][{total}/{planned}] DRY_DONE elapsed={elapsed:.2f}s")
-                continue
-            try:
-                run_im(run_args)
-                elapsed = time.perf_counter() - started
-                print(f"[IM][{total}/{planned}] OK elapsed={elapsed:.2f}s")
-            except Exception as exc:  # noqa: BLE001
-                failed += 1
-                elapsed = time.perf_counter() - started
-                print(
-                    f"[IM][{total}/{planned}] ERROR elapsed={elapsed:.2f}s "
-                    f"trial={trial_id} algo={algorithm} file={adjacency_file}: {exc}"
-                )
-                if args.stop_on_error:
-                    raise
+                try:
+                    future.result()
+                    print(f"[IM][{idx}/{planned}] OK elapsed={elapsed:.2f}s {label}")
+                except Exception as exc:  # noqa: BLE001
+                    failed += 1
+                    print(f"[IM][{idx}/{planned}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
+                    if args.stop_on_error:
+                        raise
+        return planned, failed
+
+    print("[IM] parallel_runs=OFF")
+    for idx, job in enumerate(jobs, start=1):
+        label = labels[idx - 1]
+        total += 1
+        started = time.perf_counter()
+        print(f"[IM][{idx}/{planned}] START {label}")
+        run_args = argparse.Namespace(**job)
+        if args.dry_run:
+            print(f"[DRY][IM] {label}")
+            append_run_summary(
+                result_root=Path(base_result_root),
+                problem="im",
+                status="dry_run",
+                trial_id=job["trial_id"],
+                params={
+                    "algorithm": job["algorithm"],
+                    "adjacency_file": job["adjacency_file"],
+                    "outdegree_file": job["outdegree_file"],
+                    "probability": job["probability"],
+                    "budget": job["budget"],
+                    "iterations": job["iterations"],
+                    "prob": job["prob"],
+                    "epsilon": job["epsilon"],
+                },
+            )
+            elapsed = time.perf_counter() - started
+            print(f"[IM][{idx}/{planned}] DRY_DONE elapsed={elapsed:.2f}s")
+            continue
+        try:
+            run_im(run_args)
+            elapsed = time.perf_counter() - started
+            print(f"[IM][{idx}/{planned}] OK elapsed={elapsed:.2f}s")
+        except Exception as exc:  # noqa: BLE001
+            failed += 1
+            elapsed = time.perf_counter() - started
+            print(f"[IM][{idx}/{planned}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
+            if args.stop_on_error:
+                raise
     return total, failed
 
 
@@ -247,7 +307,8 @@ def _run_mc_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
         f"[MC] planned={planned} "
         f"(trials={args.trials}, files={len(adjacency_files)}, algorithms={len(algorithms)})"
     )
-    total = 0
+    jobs: list[dict] = []
+    labels: list[str] = []
     failed = 0
 
     for trial_offset in range(args.trials):
@@ -263,62 +324,93 @@ def _run_mc_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
             epsilons,
         ):
             adjacency_file, q, n, budget, iteration, algorithm, prob, epsilon = combo
-            total += 1
-            started = time.perf_counter()
-            print(
-                f"[MC][{total}/{planned}] START "
+            labels.append(
                 f"trial={trial_id} algo={algorithm} adj={adjacency_file} q={q} n={n} "
                 f"budget={budget} iter={iteration} prob={prob} eps={epsilon}"
             )
-            run_args = argparse.Namespace(
-                data_dir=base_data_dir,
-                result_root=base_result_root,
-                adjacency_file=adjacency_file,
-                q=q,
-                n=n,
-                budget=budget,
-                iterations=iteration,
-                algorithm=algorithm,
-                prob=prob,
-                epsilon=epsilon,
-                trial_id=trial_id,
-                max_workers=args.max_workers,
-                disable_progress=args.disable_progress,
+            jobs.append(
+                {
+                    "data_dir": base_data_dir,
+                    "result_root": base_result_root,
+                    "adjacency_file": adjacency_file,
+                    "q": q,
+                    "n": n,
+                    "budget": budget,
+                    "iterations": iteration,
+                    "algorithm": algorithm,
+                    "prob": prob,
+                    "epsilon": epsilon,
+                    "trial_id": trial_id,
+                    "max_workers": args.max_workers,
+                    "disable_progress": args.disable_progress,
+                }
             )
-            if args.dry_run:
-                print(f"[DRY][MC] trial={trial_id} algo={algorithm} budget={budget} q={q} n={n} file={adjacency_file}")
-                append_run_summary(
-                    result_root=Path(base_result_root),
-                    problem="mc",
-                    status="dry_run",
-                    trial_id=trial_id,
-                    params={
-                        "algorithm": algorithm,
-                        "adjacency_file": adjacency_file,
-                        "q": q,
-                        "n": n,
-                        "budget": budget,
-                        "iterations": iteration,
-                        "prob": prob,
-                        "epsilon": epsilon,
-                    },
-                )
+
+    total = 0
+    if args.parallel_runs and not args.dry_run:
+        workers = args.parallel_run_workers if args.parallel_run_workers else _default_parallel_workers(planned)
+        print(f"[MC] parallel_runs=ON workers={workers}")
+        with ProcessPoolExecutor(max_workers=workers) as executor:
+            future_to_meta = {}
+            for idx, job in enumerate(jobs, start=1):
+                label = labels[idx - 1]
+                started = time.perf_counter()
+                print(f"[MC][{idx}/{planned}] SUBMIT {label}")
+                future = executor.submit(_execute_mc_job, job)
+                future_to_meta[future] = (idx, label, started)
+
+            for future in as_completed(future_to_meta):
+                idx, label, started = future_to_meta[future]
+                total += 1
                 elapsed = time.perf_counter() - started
-                print(f"[MC][{total}/{planned}] DRY_DONE elapsed={elapsed:.2f}s")
-                continue
-            try:
-                run_mc(run_args)
-                elapsed = time.perf_counter() - started
-                print(f"[MC][{total}/{planned}] OK elapsed={elapsed:.2f}s")
-            except Exception as exc:  # noqa: BLE001
-                failed += 1
-                elapsed = time.perf_counter() - started
-                print(
-                    f"[MC][{total}/{planned}] ERROR elapsed={elapsed:.2f}s "
-                    f"trial={trial_id} algo={algorithm} file={adjacency_file}: {exc}"
-                )
-                if args.stop_on_error:
-                    raise
+                try:
+                    future.result()
+                    print(f"[MC][{idx}/{planned}] OK elapsed={elapsed:.2f}s {label}")
+                except Exception as exc:  # noqa: BLE001
+                    failed += 1
+                    print(f"[MC][{idx}/{planned}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
+                    if args.stop_on_error:
+                        raise
+        return planned, failed
+
+    print("[MC] parallel_runs=OFF")
+    for idx, job in enumerate(jobs, start=1):
+        total += 1
+        label = labels[idx - 1]
+        started = time.perf_counter()
+        print(f"[MC][{idx}/{planned}] START {label}")
+        run_args = argparse.Namespace(**job)
+        if args.dry_run:
+            print(f"[DRY][MC] {label}")
+            append_run_summary(
+                result_root=Path(base_result_root),
+                problem="mc",
+                status="dry_run",
+                trial_id=job["trial_id"],
+                params={
+                    "algorithm": job["algorithm"],
+                    "adjacency_file": job["adjacency_file"],
+                    "q": job["q"],
+                    "n": job["n"],
+                    "budget": job["budget"],
+                    "iterations": job["iterations"],
+                    "prob": job["prob"],
+                    "epsilon": job["epsilon"],
+                },
+            )
+            elapsed = time.perf_counter() - started
+            print(f"[MC][{idx}/{planned}] DRY_DONE elapsed={elapsed:.2f}s")
+            continue
+        try:
+            run_mc(run_args)
+            elapsed = time.perf_counter() - started
+            print(f"[MC][{idx}/{planned}] OK elapsed={elapsed:.2f}s")
+        except Exception as exc:  # noqa: BLE001
+            failed += 1
+            elapsed = time.perf_counter() - started
+            print(f"[MC][{idx}/{planned}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
+            if args.stop_on_error:
+                raise
     return total, failed
 
 
