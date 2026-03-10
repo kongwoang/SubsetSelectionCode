@@ -4,7 +4,7 @@ import argparse
 import json
 import os
 import time
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from itertools import product
 from pathlib import Path
 from typing import Sequence
@@ -193,6 +193,40 @@ def _run_im_single(
     return result
 
 
+def _run_im_grid_job(payload: dict) -> AlgorithmResult:
+    data_dir = Path(payload["data_dir"])
+    result_root = Path(payload["result_root"])
+    adjacency_path = resolve_input_file(payload["adjacency_file"], data_dir)
+    outdegree_path = resolve_input_file(payload["outdegree_file"], data_dir)
+
+    weight_matrix = read_im_edge_matrix(float(payload["probability"]), str(adjacency_path))
+    node_num = int(np.shape(weight_matrix)[0])
+    eps_values = read_outdegree_eps(str(outdegree_path), node_num)
+    problem = InfluenceMaximizationProblem(
+        weight_matrix=weight_matrix,
+        budget=float(payload["budget"]),
+        eps_values=eps_values,
+    )
+
+    return _run_im_single(
+        problem=problem,
+        result_root=result_root,
+        adjacency_file=adjacency_path.name,
+        outdegree_file=outdegree_path.name,
+        probability=float(payload["probability"]),
+        budget=float(payload["budget"]),
+        canonical_algo=str(payload["algorithm"]),
+        iterations=int(payload["iterations"]),
+        prob=float(payload["prob"]),
+        epsilon=float(payload["epsilon"]),
+        trial_id=int(payload["trial_id"]),
+        max_workers=payload["max_workers"],
+        disable_progress=bool(payload["disable_progress"]),
+        data_dir=data_dir,
+        algo_params=dict(payload["algo_params"]),
+    )
+
+
 def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.ArgumentParser:
     if parser is None:
         parser = argparse.ArgumentParser(
@@ -239,8 +273,8 @@ def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.Argu
     parser.add_argument(
         "--grid-parallel-workers",
         type=int,
-        default=16,
-        help="Worker threads for grid-level parallelism (None -> auto)",
+        default=4,
+        help="Worker processes for grid-level parallelism",
     )
     parser.add_argument(
         "--grid-iterations",
@@ -329,32 +363,31 @@ def run_im(args: argparse.Namespace) -> AlgorithmResult:
     print(f"[IM-GRID] planned={total} algorithms={len(algorithms)}")
     best_result: AlgorithmResult | None = None
 
-    def _execute_grid_job(index: int, job_tuple: tuple[int, float, float, int | None, dict, str]) -> AlgorithmResult:
+    def _make_payload(index: int, job_tuple: tuple[int, float, float, int | None, dict, str]) -> dict:
         iteration, prob, epsilon, workers, algo_params, algo = job_tuple
         trial_id = args.trial_id + index - 1
-        return _run_im_single(
-            problem=problem,
-            result_root=result_root,
-            adjacency_file=adjacency_path.name,
-            outdegree_file=outdegree_path.name,
-            probability=args.probability,
-            budget=args.budget,
-            canonical_algo=algo,
-            iterations=iteration,
-            prob=prob,
-            epsilon=epsilon,
-            trial_id=trial_id,
-            max_workers=args.max_workers if args.max_workers is not None else workers,
-            disable_progress=args.disable_progress,
-            data_dir=data_dir,
-            algo_params=algo_params,
-        )
+        return {
+            "data_dir": str(data_dir),
+            "result_root": str(result_root),
+            "adjacency_file": args.adjacency_file,
+            "outdegree_file": args.outdegree_file,
+            "probability": float(args.probability),
+            "budget": float(args.budget),
+            "algorithm": algo,
+            "iterations": int(iteration),
+            "prob": float(prob),
+            "epsilon": float(epsilon),
+            "trial_id": int(trial_id),
+            "max_workers": args.max_workers if args.max_workers is not None else workers,
+            "disable_progress": args.disable_progress,
+            "algo_params": dict(algo_params),
+        }
 
     if args.grid_parallel_runs and total > 1:
         workers = args.grid_parallel_workers or max(1, min(total, os.cpu_count() or 1))
         print(f"[IM-GRID] parallel=ON workers={workers}")
         future_to_meta = {}
-        with ThreadPoolExecutor(max_workers=workers) as executor:
+        with ProcessPoolExecutor(max_workers=workers) as executor:
             for idx, job in enumerate(jobs, start=1):
                 iteration, prob, epsilon, job_workers, algo_params, algo = job
                 trial_id = args.trial_id + idx - 1
@@ -364,7 +397,7 @@ def run_im(args: argparse.Namespace) -> AlgorithmResult:
                 )
                 print(f"[IM-GRID][{idx}/{total}] SUBMIT {label}")
                 started = time.perf_counter()
-                future = executor.submit(_execute_grid_job, idx, job)
+                future = executor.submit(_run_im_grid_job, _make_payload(idx, job))
                 future_to_meta[future] = (idx, label, started)
 
             for future in as_completed(future_to_meta):
@@ -391,7 +424,7 @@ def run_im(args: argparse.Namespace) -> AlgorithmResult:
             )
             print(f"[IM-GRID][{idx}/{total}] START {label}")
             try:
-                result = _execute_grid_job(idx, job)
+                result = _run_im_grid_job(_make_payload(idx, job))
                 elapsed = time.perf_counter() - started
                 print(f"[IM-GRID][{idx}/{total}] OK elapsed={elapsed:.2f}s value={result.value} cost={result.cost}")
                 if _is_better(result, best_result):
