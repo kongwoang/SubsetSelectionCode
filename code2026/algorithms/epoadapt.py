@@ -711,7 +711,7 @@ def run_epoadapt(problem, config: AlgorithmConfig) -> AlgorithmResult:
         "T": config.T,
         "greedy_evaluate": config.greedy_evaluate,
         "result_dir": config.result_dir,
-        "enable_progress_bar": True,
+        "enable_progress_bar": False,
         "top_k": top_k,
         "sub_patience": sub_patience,
         "mutation_params": mutation_params,
@@ -735,27 +735,36 @@ def run_epoadapt(problem, config: AlgorithmConfig) -> AlgorithmResult:
             for idx, value, cost in singleton_list
         ]
 
-        for future in as_completed(futures):
-            result = future.result()
-            if result is None:
-                continue
+        with tqdm(
+            total=len(futures),
+            desc="epoadapt",
+            position=0,
+            leave=True,
+            disable=not config.enable_progress_bar,
+        ) as pbar:
+            for future in as_completed(futures):
+                result = future.result()
+                if result is None:
+                    pbar.update(1)
+                    continue
 
-            current_id, solution, f_value, c_cost = result
-            if f_value > f_best:
-                f_best = float(f_value)
-                c_best = float(c_cost)
-                best_solution = solution
-                solution_id = current_id
+                current_id, solution, f_value, c_cost = result
+                if f_value > f_best:
+                    f_best = float(f_value)
+                    c_best = float(c_cost)
+                    best_solution = solution
+                    solution_id = current_id
 
-                cpu_time_used, wall_time_used = elapsed_time(start_cpu, start_wall)
-                if config.logger is not None:
-                    message = (
-                        f"value = {f_best} single_item = {solution_id}"
-                        f" cpu_time_used = {round(cpu_time_used, 3)}"
-                        f" wall_time_used = {round(wall_time_used, 3)}"
-                        f" cost = {c_best} budget = {budget}"
-                    )
-                    config.logger.write_main(message, best_solution)
+                    cpu_time_used, wall_time_used = elapsed_time(start_cpu, start_wall)
+                    if config.logger is not None:
+                        message = (
+                            f"value = {f_best} single_item = {solution_id}"
+                            f" cpu_time_used = {round(cpu_time_used, 3)}"
+                            f" wall_time_used = {round(wall_time_used, 3)}"
+                            f" cost = {c_best} budget = {budget}"
+                        )
+                        config.logger.write_main(message, best_solution)
+                pbar.update(1)
 
     cpu_time_used, wall_time_used = elapsed_time(start_cpu, start_wall)
     return AlgorithmResult(
