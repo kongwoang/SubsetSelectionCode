@@ -7,6 +7,7 @@ from .epomc import run_epomc
 from .fpomc import run_fpomc
 from .gga import run_gga
 from .greedy_max import run_greedy_max
+from .newalgo import run_newalgo
 from .one_guess_greedy_plus import run_one_guess_greedy_plus
 from .p_pomc import run_p_pomc
 from .pomc import run_pomc
@@ -15,6 +16,7 @@ from .sto_evo_smc import run_sto_evo_smc
 ALGORITHM_REGISTRY: Dict[str, Callable] = {
     "gga": run_gga,
     "greedy_max": run_greedy_max,
+    "newalgo": run_newalgo,
     "one_guess_greedy_plus": run_one_guess_greedy_plus,
     "pomc": run_pomc,
     "eamc": run_eamc,
@@ -27,6 +29,8 @@ ALGORITHM_REGISTRY: Dict[str, Callable] = {
 ALGORITHM_ALIASES: Dict[str, str] = {
     "gga": "gga",
     "greedy_max": "greedy_max",
+    "newalgo": "newalgo",
+    "new_algo": "newalgo",
     "one_guess_greedy_plus": "one_guess_greedy_plus",
     "pomc": "pomc",
     "eamc": "eamc",
@@ -39,6 +43,7 @@ ALGORITHM_ALIASES: Dict[str, str] = {
     "GGA": "gga",
     "POMC": "pomc",
     "EAMC": "eamc",
+    "NEWALGO": "newalgo",
     "FPOMC": "fpomc",
     "EVO_SMC": "sto_evo_smc",
     "sto_EVO_SMC": "sto_evo_smc",
@@ -75,6 +80,7 @@ __all__ = [
     "list_algorithms",
     "run_gga",
     "run_greedy_max",
+    "run_newalgo",
     "run_one_guess_greedy_plus",
     "run_pomc",
     "run_eamc",
