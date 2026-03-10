@@ -711,7 +711,7 @@ def run_epoadapt(problem, config: AlgorithmConfig) -> AlgorithmResult:
         "T": config.T,
         "greedy_evaluate": config.greedy_evaluate,
         "result_dir": config.result_dir,
-        "enable_progress_bar": False,
+        "enable_progress_bar": True,
         "top_k": top_k,
         "sub_patience": sub_patience,
         "mutation_params": mutation_params,
