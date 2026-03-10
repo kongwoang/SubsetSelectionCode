@@ -24,15 +24,17 @@ GRID_CONFIG = {
     "data_dir": None,  # None -> use local_config defaults
     "result_root": None,  # None -> use local_config defaults
     "im": {
-        "adjacency_files": ["graph100-01.txt", "graph200-01.txt", "insecta.txt"],
-        "outdegree_files": ["graph100_eps.txt", "graph200_eps.txt", "insecta_eps.txt"],
-        "probabilities": [0.05, 0.1],
+        # Keep one default configuration for IM.
+        "adjacency_files": [IM_DEFAULTS["adjacency_file"]],
+        "outdegree_files": [IM_DEFAULTS["outdegree_file"]],
+        "probabilities": [IM_DEFAULTS["probability"]],
         "budgets": [IM_DEFAULTS["budget"]],
         "iterations": [IM_DEFAULTS["iterations"]],
         "probs": [IM_DEFAULTS["prob"]],
         "epsilons": [IM_DEFAULTS["epsilon"]],
     },
     "mc": {
+        # Keep one default configuration for MC.
         "adjacency_files": [MC_DEFAULTS["adjacency_file"]],
         "qs": [MC_DEFAULTS["q"]],
         "ns": [MC_DEFAULTS["n"]],
