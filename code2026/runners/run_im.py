@@ -239,7 +239,7 @@ def build_parser(parser: argparse.ArgumentParser | None = None) -> argparse.Argu
     parser.add_argument(
         "--grid-parallel-workers",
         type=int,
-        default=None,
+        default=16,
         help="Worker threads for grid-level parallelism (None -> auto)",
     )
     parser.add_argument(
