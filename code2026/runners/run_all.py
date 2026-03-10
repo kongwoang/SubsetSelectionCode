@@ -8,6 +8,8 @@ from itertools import product
 from pathlib import Path
 from typing import Callable, Sequence
 
+from tqdm import tqdm
+
 from ..algorithms import list_algorithms
 from .local_config import IM_DEFAULTS, MC_DEFAULTS
 from .run_im import run_im
@@ -209,7 +211,7 @@ def _run_im_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
                     "epsilon": epsilon,
                     "trial_id": trial_id,
                     "max_workers": args.max_workers,
-                    "disable_progress": args.disable_progress,
+                    "disable_progress": True if args.parallel_runs else args.disable_progress,
                 }
             )
 
@@ -226,18 +228,21 @@ def _run_im_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
                 future = executor.submit(_execute_im_job, job)
                 future_to_meta[future] = (idx, label, started)
 
-            for future in as_completed(future_to_meta):
-                idx, label, started = future_to_meta[future]
-                total += 1
-                elapsed = time.perf_counter() - started
-                try:
-                    future.result()
-                    print(f"[IM][{idx}/{planned}] OK elapsed={elapsed:.2f}s {label}")
-                except Exception as exc:  # noqa: BLE001
-                    failed += 1
-                    print(f"[IM][{idx}/{planned}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
-                    if args.stop_on_error:
-                        raise
+            with tqdm(total=planned, desc="IM parallel jobs", position=0, leave=True) as pbar:
+                for future in as_completed(future_to_meta):
+                    idx, label, started = future_to_meta[future]
+                    total += 1
+                    elapsed = time.perf_counter() - started
+                    try:
+                        future.result()
+                        print(f"[IM][{idx}/{planned}] OK elapsed={elapsed:.2f}s {label}")
+                    except Exception as exc:  # noqa: BLE001
+                        failed += 1
+                        print(f"[IM][{idx}/{planned}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
+                        if args.stop_on_error:
+                            raise
+                    finally:
+                        pbar.update(1)
         return planned, failed
 
     print("[IM] parallel_runs=OFF")
@@ -342,7 +347,7 @@ def _run_mc_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
                     "epsilon": epsilon,
                     "trial_id": trial_id,
                     "max_workers": args.max_workers,
-                    "disable_progress": args.disable_progress,
+                    "disable_progress": True if args.parallel_runs else args.disable_progress,
                 }
             )
 
@@ -359,18 +364,21 @@ def _run_mc_grid(args: argparse.Namespace, algorithms: Sequence[str]) -> tuple[i
                 future = executor.submit(_execute_mc_job, job)
                 future_to_meta[future] = (idx, label, started)
 
-            for future in as_completed(future_to_meta):
-                idx, label, started = future_to_meta[future]
-                total += 1
-                elapsed = time.perf_counter() - started
-                try:
-                    future.result()
-                    print(f"[MC][{idx}/{planned}] OK elapsed={elapsed:.2f}s {label}")
-                except Exception as exc:  # noqa: BLE001
-                    failed += 1
-                    print(f"[MC][{idx}/{planned}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
-                    if args.stop_on_error:
-                        raise
+            with tqdm(total=planned, desc="MC parallel jobs", position=0, leave=True) as pbar:
+                for future in as_completed(future_to_meta):
+                    idx, label, started = future_to_meta[future]
+                    total += 1
+                    elapsed = time.perf_counter() - started
+                    try:
+                        future.result()
+                        print(f"[MC][{idx}/{planned}] OK elapsed={elapsed:.2f}s {label}")
+                    except Exception as exc:  # noqa: BLE001
+                        failed += 1
+                        print(f"[MC][{idx}/{planned}] ERROR elapsed={elapsed:.2f}s {label}: {exc}")
+                        if args.stop_on_error:
+                            raise
+                    finally:
+                        pbar.update(1)
         return planned, failed
 
     print("[MC] parallel_runs=OFF")

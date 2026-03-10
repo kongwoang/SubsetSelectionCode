@@ -3,6 +3,7 @@ from __future__ import annotations
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
 import numpy as np
+from tqdm import tqdm
 
 from .subroutines.sub_pomc import run_sub_pomc
 from ..common.solution import solution_plus_single_item
@@ -88,27 +89,36 @@ def run_epomc(problem, config: AlgorithmConfig) -> AlgorithmResult:
             for index, value, cost in singleton_scores
         ]
 
-        for future in as_completed(futures):
-            result = future.result()
-            if result is None:
-                continue
+        with tqdm(
+            total=len(futures),
+            desc="epomc",
+            position=0,
+            leave=True,
+            disable=not config.enable_progress_bar,
+        ) as pbar:
+            for future in as_completed(futures):
+                result = future.result()
+                if result is None:
+                    pbar.update(1)
+                    continue
 
-            current_id, solution, f_value, c_cost = result
-            if f_value > f_best:
-                f_best = f_value
-                c_best = c_cost
-                best_solution = solution
-                solution_id = current_id
+                current_id, solution, f_value, c_cost = result
+                if f_value > f_best:
+                    f_best = f_value
+                    c_best = c_cost
+                    best_solution = solution
+                    solution_id = current_id
 
-                cpu_time_used, wall_time_used = elapsed_time(start_cpu, start_wall)
-                if config.logger is not None:
-                    message = (
-                        f"value = {f_best} single_item = {solution_id}"
-                        f" cpu_time_used = {round(cpu_time_used, 3)}"
-                        f" wall_time_used = {round(wall_time_used, 3)}"
-                        f" cost = {c_best} budget = {budget}"
-                    )
-                    config.logger.write_main(message, solution)
+                    cpu_time_used, wall_time_used = elapsed_time(start_cpu, start_wall)
+                    if config.logger is not None:
+                        message = (
+                            f"value = {f_best} single_item = {solution_id}"
+                            f" cpu_time_used = {round(cpu_time_used, 3)}"
+                            f" wall_time_used = {round(wall_time_used, 3)}"
+                            f" cost = {c_best} budget = {budget}"
+                        )
+                        config.logger.write_main(message, solution)
+                pbar.update(1)
 
     cpu_time_used, wall_time_used = elapsed_time(start_cpu, start_wall)
     return AlgorithmResult(
